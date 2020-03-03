@@ -55,6 +55,7 @@ class BottomDialog : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
         button1.setOnClickListener {
             toggleState()
         }
@@ -77,19 +78,21 @@ class BottomDialog : BottomSheetDialogFragment() {
                 }
             }
         })
+
+        editText.focusAndShowKeyboard()
     }
 
     private fun toggleState() {
         if (state == KEYBOARD)
             setState(ATTACHES)
         else
-            setState(KEYBOARD)
+            editText.focusAndShowKeyboard()
     }
 
     private fun setState(state: Int) {
         when (state) {
             KEYBOARD -> {
-                showSoftKeyboard(editText)
+
             }
             ATTACHES -> {
                 hideKeyboardFrom(dialog!!.context, editText)
