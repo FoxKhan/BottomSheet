@@ -1,5 +1,7 @@
 package com.example.bottomsheet
 
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.Dialog
 import android.content.Context
@@ -24,11 +26,13 @@ class BottomDialog : BottomSheetDialogFragment() {
 
     private var state = NOTHING
 
+    private var currentAnimation: ValueAnimator? = null
+
     override fun getTheme(): Int = R.style.BottomDialog
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = super.onCreateDialog(savedInstanceState) as BottomSheetDialog
-        dialog.behavior.addBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback(){
+        dialog.behavior.addBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
             override fun onSlide(bottomSheet: View, slideOffset: Float) {
                 Log.d("SDS", "onSlide, slideOffset: $slideOffset")
             }
@@ -68,18 +72,28 @@ class BottomDialog : BottomSheetDialogFragment() {
             override fun onHeightChanged(height: Int) {
                 Log.d("SDS", "onHeightChanged, height: $height")
                 if (height > 0) {
-                    view.attachWindow.layoutParams = LayoutParams(MATCH_PARENT, height)
+                    onShowKeyboardAnimation(height)
                     state = KEYBOARD
                 } else {
                     if (state == ATTACHES)
-                        view.attachWindow.layoutParams = LayoutParams(MATCH_PARENT, keyboardHeight)
+                        onShowKeyboardAnimation(keyboardHeight)
                     else
-                        view.attachWindow.layoutParams = LayoutParams(MATCH_PARENT, 0)
+                        onShowKeyboardAnimation(0)
                 }
             }
         })
 
-        editText.focusAndShowKeyboard()
+        if (savedInstanceState == null) {
+            editText.focusAndShowKeyboard()
+            val anim = ObjectAnimator.ofFloat(view,  View.ALPHA, 0f, 1f)
+            anim.duration = ANIMATION_DURATION
+            anim.start()
+        }
+    }
+
+    override fun onPause() {
+        currentAnimation?.cancel()
+        super.onPause()
     }
 
     private fun toggleState() {
@@ -99,11 +113,24 @@ class BottomDialog : BottomSheetDialogFragment() {
             }
             NOTHING -> {
                 if (KeyboardInfo.keyboardState == KeyboardInfo.STATE_CLOSED)
-                    attachWindow.layoutParams = LayoutParams(MATCH_PARENT, 0)
+                    onShowKeyboardAnimation(0)
                 else hideKeyboardFrom(dialog!!.context, editText)
             }
         }
         this.state = state
+    }
+
+    private fun onShowKeyboardAnimation(to: Int) {
+        currentAnimation?.cancel()
+        attachWindow ?: return
+        currentAnimation = ValueAnimator.ofInt(attachWindow.height, to).apply {
+            duration = ANIMATION_DURATION
+            addUpdateListener {
+                val value = it.animatedValue as Int
+                attachWindow.layoutParams = LayoutParams(MATCH_PARENT, value)
+            }
+            start()
+        }
     }
 
     companion object {
@@ -111,6 +138,7 @@ class BottomDialog : BottomSheetDialogFragment() {
         private const val KEYBOARD = 0
         private const val ATTACHES = 1
         private const val NOTHING = 2
+        private const val ANIMATION_DURATION = 200L
 
         fun newInstance(): BottomDialog = BottomDialog()
 
